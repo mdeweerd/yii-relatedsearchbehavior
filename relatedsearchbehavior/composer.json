@@ -1,0 +1,20 @@
+{
+    "name": "ynamics/relatedsearchbehavior",
+    "description": "Behavior making searching relations in CGridView as well as the use of relations easier",
+    "keywords": ["yii","CGridView", "KeenActiveDataProvider", "relations","CActiveRecord","yii"],
+    "type": "yii-extension",
+    "license": "MIT License",
+    "authors": [
+        {
+            "name": "Mario De Weerd",
+            "email": "usecontactform@ynamics.com",
+            "homepage": "https://www.ynamics.com"
+        }
+    ],
+    "repositories": [
+        {
+            "type": "composer",
+            "url": "http://packages.phundament.com"
+        }
+    ]
+}
