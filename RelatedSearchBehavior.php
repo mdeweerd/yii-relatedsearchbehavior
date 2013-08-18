@@ -172,12 +172,12 @@ class RelatedSearchBehavior extends CActiveRecordBehavior {
 
             // If a search is done on this relation, add compare condition and require relation in query.
             // Excluding object to avoid special cases.
-            if("$search_value"!=="") {
+            if("$search_value"!==""||(is_array($search_value)&&!empty($search_value))) {
                 if(!is_object($search_value)) {
                     $with[$relation]=$relation;
                     $criteria->compare($column,$search_value,$partialMatch);
                 } else {
-                    throw new CException("Provided search value for '$ovar' ($column) is an object, should be string.");
+                    throw new CException("Provided search value for '$ovar' ($column) is an object, should be string or array.");
                 }
             }
             // If a sort is done on this relation, require the relation in the query.
@@ -442,5 +442,6 @@ class RelatedSearchBehavior extends CActiveRecordBehavior {
      * 1.06  Fix to autoScope - return owner (chaining) + correct example in comment.
      * 1.07  Rely on DataProvider to create sort object in order to get the usual key for the $_GET sort var.
      * 1.08  Fix in KeenDataProvider to quote column in GROUP BY.
+     * 1.09  Allow array for search value.
      */
 }
