@@ -83,7 +83,7 @@ class RelatedSearchBehavior extends CActiveRecordBehavior {
      ),
      )
  );
- Requires adding select to critÃ©ria and indication of 'with' expression...
+ Requires adding select to critéria and indication of 'with' expression...
  */
 
     /**
@@ -103,8 +103,10 @@ class RelatedSearchBehavior extends CActiveRecordBehavior {
     public function relatedSearch($criteria,$options=array()) {
 
         $relations=$this->relations;
+        
+        $provider=new KeenActiveDataProvider($this->getOwner());
 
-        $sort=new CSort(  ) ;
+        $sort=$provider->getSort();
         if(isset($options['sort'])) {
             foreach($options['sort'] as $name=>$value) {
                 $sort->$name=$value;
@@ -230,18 +232,21 @@ class RelatedSearchBehavior extends CActiveRecordBehavior {
         $criteria->mergeWith(array('with'=>array_values($with)));
 
         // Construct options for the data provider.
-        $providerOptions=array();
+        $providerConfig=array();
         // Copy the options provides to empty array (to prevent overwriting the original array.
-        $providerOptions=CMap::mergeArray($providerOptions, $options);
+        $providerConfig=CMap::mergeArray($providerConfig, $options);
         // Merge our constructed options with the array.
-        $providerOptions=CMap::mergeArray(
-                $providerOptions,
+        $providerConfig=CMap::mergeArray(
+                $providerConfig,
                 array(
                         'criteria'=>$criteria,
                         'sort'=>$sort,
                 )
         );
-        return new KeenActiveDataProvider($this->getOwner(), $providerOptions );
+        foreach($providerConfig as $key=>$value) {
+            $provider->$key=$value;
+        }
+        return $provider;
     }
 
 
@@ -398,7 +403,7 @@ class RelatedSearchBehavior extends CActiveRecordBehavior {
                 $value=$parameters[0];
                 $partialMatch=false;
                 $operator="AND";
-                $escape=true;
+                $escape=false;
                 switch(count($parameters)) {
                     case 4:
                         $escape=$parameters[3];
@@ -435,6 +440,7 @@ class RelatedSearchBehavior extends CActiveRecordBehavior {
      *       Added option 'partialMatch' for relation.
      * 1.05  Enable multiple attributes in default sort.
      * 1.06  Fix to autoScope - return owner (chaining) + correct example in comment.
-     * 1.07 The default parameter for '$escape' of 'compare' is now true (as default for compare).
+     * 1.07  Rely on DataProvider to create sort object in order to get the usual key for the $_GET sort var.
+     * 1.08  Fix in KeenDataProvider to quote column in GROUP BY.
      */
 }
