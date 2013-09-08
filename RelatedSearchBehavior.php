@@ -10,6 +10,7 @@
  * @license http://www.opensource.org/licenses/mit-license.php MIT
  *  The MIT License
  * @author Mario De Weerd
+ * @author Svobik7 (yiiframework.com/forum) -
  *
  * @example
  *
@@ -103,7 +104,7 @@ class RelatedSearchBehavior extends CActiveRecordBehavior {
     public function relatedSearch($criteria,$options=array()) {
 
         $relations=$this->relations;
-        
+
         $provider=new KeenActiveDataProvider($this->getOwner());
 
         $sort=$provider->getSort();
@@ -144,7 +145,7 @@ class RelatedSearchBehavior extends CActiveRecordBehavior {
                 $relationfield=$relationvar;
             }
             $search_value=$this->getOwner()->{$ovar};
-            
+
             // Get relation part, table alias, and column reference in query.
             $relation=$relationfield;
             $column=$relationfield;
@@ -160,6 +161,17 @@ class RelatedSearchBehavior extends CActiveRecordBehavior {
             $shortrelation=$relation;
             if(($pos=strrpos($shortrelation, '.'))!==false) {
                 $shortrelation=substr($shortrelation, $pos+1);
+            }
+
+            // Check if the relation has an alias and if it does, use it as the relation reference
+            // to make the SQL request work.
+            $ownerRelationsDefinitions = $this->getOwner()->relations();
+            if (isset($ownerRelationsDefinitions[$shortrelation])) {
+                $currentRelationDefinition = $ownerRelationsDefinitions[$shortrelation];
+
+                if (isset($currentRelationDefinition['alias'])) {
+                    $shortrelation = $currentRelationDefinition['alias'];
+                }
             }
 
             // The column reference in the query is the table alias + the column name.
@@ -217,7 +229,7 @@ class RelatedSearchBehavior extends CActiveRecordBehavior {
 	                    	}
 	                    	/* Find the appropriate sorting rule from sorting directives in $sort_attributes */
 	                        $sort_fields[]=$sort_attributes[$var][strtolower($order)];
-	                        /* Require the relation to make the sort possible */ 
+	                        /* Require the relation to make the sort possible */
 	                        $with[$resolved_relations[$var]]=$resolved_relations[$var];
 	                    } else {
 	                    	$sort_fields[] = "$var $order";
@@ -443,5 +455,6 @@ class RelatedSearchBehavior extends CActiveRecordBehavior {
      * 1.07  Rely on DataProvider to create sort object in order to get the usual key for the $_GET sort var.
      * 1.08  Fix in KeenDataProvider to quote column in GROUP BY.
      * 1.09  Allow array for search value.
+     * 1.10  Use alias defined in model's relation (Svobik7)
      */
 }
