@@ -258,4 +258,7 @@ $dataProvider=$model->search(); // Uses RelatedSearchBehavior
    
 ##Resources
 
+[Yii Extension Page](http://www.yiiframework.com/extension/relatedsearchbehavior/)
 [KeenActiveDataProvider](http://www.yiiframework.com/wiki/385/displaying-sorting-and-filtering-hasmany-manymany-relations-in-cgridview/#hh10)
+[Live Demo](http://relatedsearchbehavior.ynamics.com)
+[GitHub](https://github.com/mdeweerd/yii-relatedsearchbehavior)
