@@ -181,6 +181,52 @@ defaults are the same as compare:  autoscope(<userdefined>,false,"AND",false).
 
 This is usefull in complex nested conditions, not so much for simple searches like the above.
 
+### 6. Using relations in CSort's attributes for sorting.
+
+'CSort' allows you to specify 'virtual attributes' for sorting as mentioned in [the Yii documentation](http://www.yiiframework.com/doc/api/1.1/CSort#attributes-detail).
+Without RelatedSearchBehavior, you must make sure that you include the relations used in the search condition.
+With RelatedSearchBehavior, you do not need to take care about that - the extension takes care about it for you (since 1.16).
+
+~~~
+[php]
+$sort=array(
+    'defaultOrder'=>'title ASC',
+    'attributes'=>
+	    array(
+		    'price'=>array(
+			    'asc'=>'item.price',
+			    'desc'=>'item.price DESC',
+			    'label'=>'Item Price'
+		    ),
+	    ),
+    );
+return $this->relatedSearch(
+    $criteria,
+    array('sort'=>$sort)
+);
+~~~
+
+The preferred approach is that you'ld use attributes defined for RelatedSearchBehavior, but this might be usefull in combined sort conditions:
+
+
+~~~
+[php]
+$sort=array(
+    'defaultOrder'=>'title ASC',
+    'attributes'=>
+	    array(
+		    'groupprice'=>array(
+			    'asc'=>'item.group, item.price',
+			    'desc'=>'item.group DESC, item.price DESC',
+			    'label'=>'Item Price'
+		    ),
+	    ),
+    );
+return $this->relatedSearch(
+    $criteria,
+    array('sort'=>$sort)
+);
+~~~
 
 ### 7. Tips & notes
 - If you like RelatedSearchBehavior, you can create or update your Gii template to generate it automatically.
@@ -207,6 +253,8 @@ $dataProvider=$model->search(); // Uses RelatedSearchBehavior
      * 1.12  Autoscope for relations and 'addRelatedCondition' method as a complement to 'addCondition'.
      * 1.13  Handle 'getter' in autoscope call.
      * 1.14  Look recursively for relations for autoscope.
+     * 1.15  Added 'getDataProvider'.
+     * 1.16  Added relations used in sort "attributes" provided as a parameter.
    
 ##Resources
 
