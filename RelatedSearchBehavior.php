@@ -707,5 +707,6 @@ class RelatedSearchBehavior extends CActiveRecordBehavior {
      * 1.15  Added 'getDataProvider'.
      * 1.16  Added relations used in sort "attributes" provided as a parameter.
      * 1.17  Improved error messages. Fix for relations that are defined through option array.
+     *       Fix for local fields (aliases/virtual attributes with modified search field)
      */
 }
