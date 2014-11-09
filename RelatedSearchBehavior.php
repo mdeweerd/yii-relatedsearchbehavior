@@ -247,7 +247,15 @@ class RelatedSearchBehavior extends CActiveRecordBehavior {
                     if(isset($model->relations)) {
                         $model_relations=$model->relations;
                         if(isset($model_relations[$column])) {
-                            $relationfield=$relation.'.'.$model_relations[$column];
+                            $relationfield=$relation.'.';
+                            $model_relationvar=$model_relations[$column];
+                            if(is_array($model_relationvar)) {
+                                // Array option for the relation
+                                $relationfield.=$model_relationvar['field'];
+                            } else {
+                                // Field for the relation.
+                                $relationfield.=$model_relationvar;
+                            }
                             $done=false;
                         }
                     }
@@ -655,18 +663,29 @@ class RelatedSearchBehavior extends CActiveRecordBehavior {
             }
         }
         if(!count($parameters)) {
-            if(strpos($name,'get')===0) {
-                return $this->{substr($name,3)};
+            if(strpos($name, 'get') === 0) {
+                return $this->{substr($name, 3)};
             } else {
-                throw new CException("Parameters required for autoscope '$name'");
+                $isAutoScope=($inOwner=$owner->hasAttribute($name)) ||
+                         isset($this->relations[$name]);
+                if($isAutoScope) $message='Parameters required for autoscope "{class}.{property}';
+                else
+                    $message='Property or method "{class}.{property}" is not defined.';
             }
         } else {
             if($owner instanceof CActiveRecord) {
-                throw new CException("No corresponding attribute '$name' found in '".get_class($owner)."' for autoscope '$name'");
-	    } else {
-                throw new CException("Invalid owner of type ".get_class($owner)." for autoscope '$name'");
+                $message='Property or method "{class}.{property}" is not defined.';
+            } else {
+                $message='"{class}" must inherit from CActiveRecord for {extension}';
             }
         }
+        $errorParams=array(
+                '{class}' => get_class($owner),
+                '{property}' => $name,
+                '{extension}' => get_class($this)
+        );
+        throw new CException(
+                Yii::t('RelatedSearchBehavior.t', $message, $errorParams));
     }
     // Suggestions:
     //  Add 'quoteRelationField' method to quote a relation according to the defined fields.
@@ -687,5 +706,6 @@ class RelatedSearchBehavior extends CActiveRecordBehavior {
      * 1.14  Look recursively for relations.
      * 1.15  Added 'getDataProvider'.
      * 1.16  Added relations used in sort "attributes" provided as a parameter.
+     * 1.17  Improved error messages. Fix for relations that are defined through option array.
      */
 }
