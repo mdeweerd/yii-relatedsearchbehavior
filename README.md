@@ -24,7 +24,13 @@ To use this extension you must do 5 steps:
 4. Add the search fields to the Model rules as safe fields;
 5. Use the search field as any other field in the CGridView.
 
-Here are the details for these steps:
+There are other 'Use Cases':
+6. Use "autoScope" - Automatic scopes for each attribute
+7. Use relations in CSort's attributes for sorting.
+8. Tips & notes to improve your experience
+
+Every item is detailes below:
+
 
 ### 1. "Install" the RelatedSearchBehavior;
 
