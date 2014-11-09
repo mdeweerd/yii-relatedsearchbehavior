@@ -181,7 +181,7 @@ defaults are the same as compare:  autoscope(<userdefined>,false,"AND",false).
 
 This is usefull in complex nested conditions, not so much for simple searches like the above.
 
-### 6. Using relations in CSort's attributes for sorting.
+### 7. Using relations in CSort's attributes for sorting.
 
 'CSort' allows you to specify 'virtual attributes' for sorting as mentioned in [the Yii documentation](http://www.yiiframework.com/doc/api/1.1/CSort#attributes-detail).
 Without RelatedSearchBehavior, you must make sure that you include the relations used in the search condition.
@@ -228,7 +228,7 @@ return $this->relatedSearch(
 );
 ~~~
 
-### 7. Tips & notes
+### 8. Tips & notes
 - If you like RelatedSearchBehavior, you can create or update your Gii template to generate it automatically.
 - If you use 'ERememberFiltersBehavior', you must set the rememberScenario before getting the dataProvider - otherwise the relations will not be resolved in the sort clause.
 So you write:
