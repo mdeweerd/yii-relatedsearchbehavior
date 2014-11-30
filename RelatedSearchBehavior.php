@@ -143,7 +143,7 @@ class RelatedSearchBehavior extends CActiveRecordBehavior {
             }
             if(array_key_exists($sort_key,$sort->attributes)) {
                 $sort_cond=$sort->attributes[$sort_key][$sort_order];
-                foreach(split(',',$sort_cond) as $sort_rule) {
+                foreach(preg_split('/,/',$sort_cond) as $sort_rule) {
                     if(preg_match('/^\s*(\w+)[^\.]*\.(.*)/',$sort_rule,$matches)) {
                         $required_relations[]=$matches[1];
                     }
@@ -151,11 +151,10 @@ class RelatedSearchBehavior extends CActiveRecordBehavior {
             }
             $sort_keys[]=$sort_key; // Default order is asc.
         }
-
         foreach($required_relations as $relation) {
             $w=null;
 
-            foreach(array_reverse(split('\.',$relation)) as $r) {
+            foreach(array_reverse(preg_split('/\./',$relation)) as $r) {
                 if($w!==null) {
                     $w=array($r=>array('with'=>$w,'select'=>array()));
                 } else {
@@ -167,7 +166,7 @@ class RelatedSearchBehavior extends CActiveRecordBehavior {
         //CVarDumper::dump($with);
 
         if("{$criteria->order}"!=="") {
-            foreach(split(',',$criteria->order) as $sort_rule) {
+            foreach(preg_split('/,/',$criteria->order) as $sort_rule) {
                 if(preg_match('/^\s*(\w+)(.*)/',$sort_rule,$matches)) {
                     $order[]=array($matches[1],$matches[2]);
                     $sort_keys[]=$matches[1];
@@ -319,7 +318,7 @@ class RelatedSearchBehavior extends CActiveRecordBehavior {
             if($require_relation) {
                 // Add with conditions to setup join relations
                 $w=null;
-                foreach(array_reverse(split('\.',$relation)) as $r) {
+                foreach(array_reverse(preg_split('/\./',$relation)) as $r) {
                     if($w!==null) {
                         $w=array($r=>array('with'=>$w,'select'=>array()));
                     } else {
@@ -327,6 +326,7 @@ class RelatedSearchBehavior extends CActiveRecordBehavior {
                     }
                 }
                 $with[$relation]=$w;
+                Yii::trace("Extra With:".CVarDumper::dumpAsString($w,10,false));
             }
             // Add sort attributes (always).
             $sort_attributes["$var"] = array(
@@ -336,9 +336,10 @@ class RelatedSearchBehavior extends CActiveRecordBehavior {
             );
         }
 
-        //CVarDumper::dump($resolved_relations,10,true);
-        //CVarDumper::dump($resolved_columns,10,true);
-        //CVarDumper::dump($sort_attributes,10,true);
+        // Yii::trace("Resolved relations:".CVarDumper::dumpAsString($resolved_relations,10,false));
+        // Yii::trace("Resolved columns:".CVarDumper::dumpAsString($resolved_columns,10,false));
+        // Yii::trace("Sort attributes:".CVarDumper::dumpAsString($sort_attributes,10,false));
+        // Yii::trace("With:".CVarDumper::dumpAsString($with,10,false));
 
         /** Update order rule with resolved relations */
         if(count($order)) {
@@ -362,7 +363,7 @@ class RelatedSearchBehavior extends CActiveRecordBehavior {
         {
             $sort->attributes=$sort_attributes;
         }
-        //CVarDumper::dump($with,10,true);exit;
+
         /* Check defaultOrder for use of alias. */
         if(isset($sort->defaultOrder)) {
             if(is_string($sort->defaultOrder)) {
@@ -389,12 +390,13 @@ class RelatedSearchBehavior extends CActiveRecordBehavior {
             } /* else, is an array, do nothing */
         }
         //   print "Default order ".$sort->defaultOrder;exit;
+        // Yii::trace("With:".CVarDumper::dumpAsString($with,10,false));
 
         foreach($with as $w) {
             $criteria->mergeWith(array('with'=>$w));
         }
-        //$criteria->together=true;
-        //CVarDumper::dump($criteria->toArray(),10,true);exit;
+        $criteria->together=true;
+        //CVarDumper::dumpAsString($criteria->toArray(),10,true);exit;
         // Construct options for the data provider.
         $providerConfig=array();
         // Copy the options provides to empty array (to prevent overwriting the original array.
@@ -464,8 +466,24 @@ class RelatedSearchBehavior extends CActiveRecordBehavior {
      * @param unknown $operator
      * @param unknown $escape
      */
-    public function addRelationCondition($field,$search_value,$partialMatch,$operator,$escape) {
-        $relationfield=$this->relations[$field];
+    public function addRelationCompare($field,$search_value, $partialMatch=false, $operator='AND', $escape=true) {
+        $relationvar=$this->relations[$field];
+        // Check configuration of the relation.
+        // Either an array with 'field', 'searchvalue', 'partialMatch', or
+        // the path to the relation.
+        if(is_array($relationvar)) {
+            // Array option for the relation
+            $relationfield=$relationvar['field'];
+            if(isset($relationvar['searchvalue'])) {
+                $ovar=$relationvar['searchvalue'];
+            }
+            if(isset($relationvar['partialMatch'])) {
+                $partialMatch=$relationvar['partialMatch'];
+            }
+        } else {
+            // Field for the relation.
+            $relationfield=$relationvar;
+        }
         /////////////////////////////////////////////////////////////////
         // Get relation part, table alias, and column reference in query.
         /////////////////////////////////////////////////////////////////
@@ -477,11 +495,17 @@ class RelatedSearchBehavior extends CActiveRecordBehavior {
             $column=$relationfield;
             // The column name itself is everything after the last dot in the relationfield.
             $pos=strrpos($relationfield, '.');
-            $column=substr($relationfield, $pos+1);
+            if($pos!==false) {
+                $column=substr($relationfield, $pos+1);
+            }
 
             // The full relation path is everything before the last dot.
             $pos=strrpos($relation, '.');
-            $relation=substr($relation, 0, $pos);
+            if($pos!==false) {
+                $relation=substr($relation, 0, $pos);
+            } else {
+                $relation='';
+            }
 
             // The join table alias is the last part of the relation.
             $shortrelation=$relation;
@@ -517,7 +541,9 @@ class RelatedSearchBehavior extends CActiveRecordBehavior {
         $dbSchema=$this->getOwner()->getDbConnection()->getSchema();
 
         // The column reference in the query is the table alias + the column name.
-        $column="$shortrelation.$column";
+        if($shortrelation!=='') {
+            $column="$shortrelation.$column";
+        }
         $column=$dbSchema->quoteColumnName($column);
 
         /* Actual search functionality */
@@ -529,14 +555,17 @@ class RelatedSearchBehavior extends CActiveRecordBehavior {
             $criteria=$this->getOwner()->getDbCriteria();
             // Add with conditions to setup join relations
             $w=null;
-            foreach(array_reverse(split('\.',$relation)) as $r) {
+            foreach(array_reverse(preg_split('/\./',$relation)) as $r) {
+                if($r==='') continue; // Local table, no column.
                 if($w!==null) {
                     $w=array($r=>array('with'=>$w,'select'=>array()));
                 } else {
                     $w=array($r=>array('select'=>array()));
                 }
             }
-            $criteria->mergeWith(array('with'=>$w));
+            if($w!==null) {
+                $criteria->mergeWith(array('with'=>$w));
+            }
             $criteria->compare($column,$search_value,$partialMatch,$operator,$escape);
         } else {
             $obj=CVarDumper::dumpAsString($search_value);
@@ -682,7 +711,7 @@ class RelatedSearchBehavior extends CActiveRecordBehavior {
                         $owner->getDbCriteria()->addInCondition($column, $value, $operator);
                     }
                 } else {
-                    $this->addRelationCondition($name,$value,$partialMatch,$operator,$escape);
+                    $this->addRelationCompare($name,$value,$partialMatch,$operator,$escape);
                 }
                 return $owner;
             }
@@ -733,5 +762,7 @@ class RelatedSearchBehavior extends CActiveRecordBehavior {
      * 1.16  Added relations used in sort "attributes" provided as a parameter.
      * 1.17  Improved error messages. Fix for relations that are defined through option array.
      *       Fix for local fields (aliases/virtual attributes with modified search field)
+     * 1.18  Renamed 'addRelationCondition' in 'addRelatedCompare'.
+     * 1.19  Reactivated 'together'.
      */
 }
