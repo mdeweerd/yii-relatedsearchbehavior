@@ -143,8 +143,11 @@ class RelatedSearchBehavior extends CActiveRecordBehavior {
             if(array_key_exists($sort_key,$sort->attributes)) {
                 $sort_cond=$sort->attributes[$sort_key][$sort_order];
                 foreach(split(',',$sort_cond) as $sort_rule) {
-                    if(preg_match('/^\s*(\w+)(.*)/',$sort_rule,$matches)) {
-                        $required_relations[]=$matches[1];
+                    // Allow database expressions (MIN(), MAX(), etc) in the sort rule,
+		    // also exclude the tablealias itself as required relation.
+		    if(preg_match('/(\w+)[^\.\(]*\./',$sort_rule,$matches)) {
+                        if($matches[1]!==$ownerAlias)
+			    $required_relations[]=$matches[1];
                     }
                 }
             }
