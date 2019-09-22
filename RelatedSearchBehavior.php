@@ -39,6 +39,8 @@
  *      $sort=array(
  *          'defaultOrder'=>'device_identifier DESC',
  *      );
+ *
+ *      // $this->disableAutoSearch('field_implemented_in_cactiverecord'); // For search variable implemented in active record.
  *		return $this->relatedSearch(
  *					$criteria,
  *					array('sort'=>$sort) // Optional default sort
@@ -111,6 +113,7 @@ class RelatedSearchBehavior extends CActiveRecordBehavior {
      * @return KeenActiveDataProvider
      */
     public function relatedSearch($criteria,$options=array(),$useGET=true) {
+        // CVarDumper::dump([$criteria,$options,$useGET],10,true);
         // If this is a search scenario.
         $isSearch=$this->getOwner()->scenario==='search';
 
@@ -132,6 +135,9 @@ class RelatedSearchBehavior extends CActiveRecordBehavior {
         $sort_keys=array();
         $order=array();
         $required_relations=array();
+
+        $ownerAlias=$this->getOwner()->tableAlias;
+
         if($useGET && isset($_GET[$sort->sortVar])) {
             $sort_key=$_GET[$sort->sortVar];
             $sort_order='asc';
@@ -142,21 +148,21 @@ class RelatedSearchBehavior extends CActiveRecordBehavior {
             }
             if(array_key_exists($sort_key,$sort->attributes)) {
                 $sort_cond=$sort->attributes[$sort_key][$sort_order];
-                foreach(split(',',$sort_cond) as $sort_rule) {
+                foreach(preg_split('/,/',$sort_cond) as $sort_rule) {
                     // Allow database expressions (MIN(), MAX(), etc) in the sort rule,
-		    // also exclude the tablealias itself as required relation.
-		    if(preg_match('/(\w+)[^\.\(]*\./',$sort_rule,$matches)) {
-                        if($matches[1]!==$ownerAlias)
-			    $required_relations[]=$matches[1];
+	                // also exclude the tablealias itself as required relation.
+		            if(preg_match('/(\w+)[^\.\(]*\./',$sort_rule,/* @var string[] $matches */ $matches)) {
+                    if($matches[1]!==$ownerAlias)
+			            $required_relations[]=$matches[1];
                     }
                 }
             }
             $sort_keys[]=$sort_key; // Default order is asc.
         }
-
         foreach($required_relations as $relation) {
             $w=null;
-            foreach(array_reverse(split('\.',$relation)) as $r) {
+
+            foreach(array_reverse(preg_split('/\./',$relation)) as $r) {
                 if($w!==null) {
                     $w=array($r=>array('with'=>$w,'select'=>array()));
                 } else {
@@ -165,17 +171,21 @@ class RelatedSearchBehavior extends CActiveRecordBehavior {
             }
             $with[$relation]=$w;
         }
+        //CVarDumper::dump($with);
 
         if("{$criteria->order}"!=="") {
-            foreach(split(',',$criteria->order) as $sort_rule) {
+            foreach(preg_split('/,/',$criteria->order) as $sort_rule) {
                 if(preg_match('/^\s*(\w+)(.*)/',$sort_rule,$matches)) {
                     $order[]=array($matches[1],$matches[2]);
                     $sort_keys[]=$matches[1];
                 } else {
                     $order[]=array($sort_rule,'');
+                    $sort_keys[]="";
                 }
             }
         }
+
+
         /*@var $dbSchema CDbSchema */
         $dbSchema=$this->getOwner()->getDbConnection()->getSchema();
 
@@ -206,10 +216,15 @@ class RelatedSearchBehavior extends CActiveRecordBehavior {
                 $relationfield=$relationvar;
             }
             // Get the search value for the relation, but only if searching.
-            if($isSearch)
+            if($isSearch&&!isset($this->_disableAutoSearch[$ovar]))
                 $search_value=$this->getOwner()->{$ovar};
             else
                 $search_value='';
+
+            if($search_value==='=') {
+            	$search_value=array(null,'');
+            }
+            //  print "<br>B $relationfield $var ".CVarDumper::dumpAsString($relationvar);
 
             // Resolve the relation.
             $done=false;  // Becomes true when the relation is fully resolved.
@@ -220,7 +235,9 @@ class RelatedSearchBehavior extends CActiveRecordBehavior {
                 $column=$relationfield;
                 // The column name itself is everything after the last dot in the relationfield.
                 $pos=strrpos($relationfield, '.');
-                $column=substr($relationfield, $pos+1);
+                if($pos!==false) {
+                    $column=substr($relationfield, $pos+1);
+                }
 
                 // The full relation path is everything before the last dot.
                 $pos=strrpos($relation, '.');
@@ -234,35 +251,58 @@ class RelatedSearchBehavior extends CActiveRecordBehavior {
                     $shortrelation=substr($shortrelation, $pos+1);
                 }
 
-                // Check if the relation has an alias and if it does, use it as the relation reference
-                // to make the SQL request work.
-                $ownerRelationsDefinitions = $this->getOwner()->relations();
-                if (isset($ownerRelationsDefinitions[$shortrelation])) {
-                    $currentRelationDefinition = $ownerRelationsDefinitions[$shortrelation];
+                if($shortrelation==='') {
+                    //print "<br>Local field $ovar $var '$search_value'";
+                    // Alias for local field.
+                    $done=true;
+                } else {
+                    // Check if the relation has an alias and if it does, use it as the relation reference
+                    // to make the SQL request work.
+                    $ownerRelationsDefinitions = $this->getOwner()->relations();
+                    if (isset($ownerRelationsDefinitions[$shortrelation])) {
+                        $currentRelationDefinition = $ownerRelationsDefinitions[$shortrelation];
 
-                    if (isset($currentRelationDefinition['alias'])) {
-                        $shortrelation = $currentRelationDefinition['alias'];
-                    }
+                        if (isset($currentRelationDefinition['alias'])) {
+                            $shortrelation = $currentRelationDefinition['alias'];
+                        }
 
-                    /** Check recursively for relations */
-                    /* @var CActiveRecord $model; */
-                    $model=$currentRelationDefinition[1]::model();
-                    if(isset($model->relations)) {
-                        $model_relations=$model->relations;
-                        if(isset($model_relations[$column])) {
-                            $relationfield=$relation.'.'.$model_relations[$column];
-                            $done=false;
+                        /** Check recursively for relations */
+                        /* @var CActiveRecord $model; */
+                        $model=$currentRelationDefinition[1]::model();
+                        if(isset($model->relations)) {
+                            //print get_class($model)." $column<br>";
+                            $model_relations=$model->relations;
+                            if(isset($model_relations[$column])) {
+                                //print "$column<br/>";
+                                $relationfield=$relation.'.';
+                                $model_relationvar=$model_relations[$column];
+                                if(is_array($model_relationvar)) {
+                                    // Array option for the relation
+                                    $relationfield.=$model_relationvar['field'];
+                                } else {
+                                    // Field for the relation.
+                                    $relationfield.=$model_relationvar;
+                                }
+                                //print "$relationfield<br/>\n";
+                                $done=false;
+                            }
                         }
                     }
                 }
             }
 
             // The column reference in the query is the table alias + the column name.
-            $column="$shortrelation.$column";
+            if($shortrelation !== '') {
+                $column="$shortrelation.$column";
+            } else {
+                $column="$ownerAlias.$column";
+            }
             $column=$dbSchema->quoteColumnName($column);
 
             // Resolution done, add the information to our table.
-            $resolved_relations[$var]=$relation;
+            if($shortrelation !== '') {
+                $resolved_relations[$var]=$relation;
+            }
             $resolved_columns[$var]=$column;
 
             /* Now check if we need this relation.
@@ -271,13 +311,12 @@ class RelatedSearchBehavior extends CActiveRecordBehavior {
              */
             /* Actual search functionality */
             $require_relation=false;
-
             /* a. Check if the relation is needed for searching, and perform the search. */
             // If a search is done on this relation, add compare condition and require relation in query.
             // Excluding object to avoid special cases.
             if("$search_value"!==""||(is_array($search_value)&&!empty($search_value))) {
                 if(!is_object($search_value)) {
-                    $require_relation=true;
+                    $require_relation=($shortrelation!=='');
                     $criteria->compare($column,$search_value,$partialMatch);
                 } else {
                     throw new CException("Provided search value for '$ovar' ($column) is an object, should be string or array.");
@@ -285,7 +324,7 @@ class RelatedSearchBehavior extends CActiveRecordBehavior {
             }
             // b. If a sort is done on this relation, require the relation in the query.
             // c. If a sort is done in the criteria, require the relation.
-            if(in_array("$var",$sort_keys)) {
+            if(in_array("$var",$sort_keys)&&($shortrelation!=='')) {
                 $require_relation=true;
             }
 
@@ -293,7 +332,7 @@ class RelatedSearchBehavior extends CActiveRecordBehavior {
             if($require_relation) {
                 // Add with conditions to setup join relations
                 $w=null;
-                foreach(array_reverse(split('\.',$relation)) as $r) {
+                foreach(array_reverse(preg_split('/\./',$relation)) as $r) {
                     if($w!==null) {
                         $w=array($r=>array('with'=>$w,'select'=>array()));
                     } else {
@@ -301,6 +340,7 @@ class RelatedSearchBehavior extends CActiveRecordBehavior {
                     }
                 }
                 $with[$relation]=$w;
+                Yii::trace("Extra With:".CVarDumper::dumpAsString($w,10,false));
             }
             // Add sort attributes (always).
             $sort_attributes["$var"] = array(
@@ -310,17 +350,23 @@ class RelatedSearchBehavior extends CActiveRecordBehavior {
             );
         }
 
+        // Yii::trace("Resolved relations:".CVarDumper::dumpAsString($resolved_relations,10,false));
+        // Yii::trace("Resolved columns:".CVarDumper::dumpAsString($resolved_columns,10,false));
+        // Yii::trace("Sort attributes:".CVarDumper::dumpAsString($sort_attributes,10,false));
+        // Yii::trace("With:".CVarDumper::dumpAsString($with,10,false));
+        // Yii::trace("Order:".CVarDumper::dumpAsString(["order"=>$order],10,false));
+
         /** Update order rule with resolved relations */
         if(count($order)) {
-            $result="";
+            $result=[];
             // Update criteria
             foreach($order as $value) {
                 if(array_key_exists($value[0],$resolved_columns)) {
                     $value[0]=$resolved_columns[$value[0]];
                 }
-                $result.=$value[0].$value[1];
+                $result[]=$value[0].$value[1];
             }
-            $criteria->order=$result;
+            $criteria->order=implode(",",$result);
         }
         /* Always allow sorting on default attributes */
         $sort_attributes[]="*";
@@ -359,12 +405,13 @@ class RelatedSearchBehavior extends CActiveRecordBehavior {
             } /* else, is an array, do nothing */
         }
         //   print "Default order ".$sort->defaultOrder;exit;
+        // Yii::trace("With:".CVarDumper::dumpAsString($with,10,false));
 
         foreach($with as $w) {
             $criteria->mergeWith(array('with'=>$w));
         }
-        //$criteria->together=true;
-//CVarDumper::dump($criteria->toArray(),10,true);exit;
+        $criteria->together=true;
+        //CVarDumper::dumpAsString($criteria->toArray(),10,true);exit;
         // Construct options for the data provider.
         $providerConfig=array();
         // Copy the options provides to empty array (to prevent overwriting the original array.
@@ -416,7 +463,7 @@ class RelatedSearchBehavior extends CActiveRecordBehavior {
                     $value=CHtml::value($this->getOwner(),$valueField);
                 } else {
                     // Standard field: same value for searh and for display value.
-                    $relationfield=$relationvar;
+                    //$relationfield=$relationvar;
                     $value=CHtml::value($this->getOwner(),$relationvar);
                 }
                 return $value;
@@ -425,17 +472,64 @@ class RelatedSearchBehavior extends CActiveRecordBehavior {
     }
 
     /**
+     * Adds a between condition.
+     *
+     * Similar to CDbCriteria::addBetweenConditoni
+     *
+     */
+    public function addBetweenCondition($field,$value_start,$value_end,$operator='AND') {
+        $this->addRelationCompare($field, ['#between#'=>true,$value_start,$value_end],false,$operator);
+    }
+    private $_disableAutoSearch=[];
+
+    /**
+     * Disable adding internal search value variable for the given field - use the field value from
+     * the owner class instead.
+     *
+     * In order to accept search values for relational fields, RelatedSearchBehavior implements
+     * local storage for these relational fields.
+     * In some cases the owner class (the CActiveRecord) already implements this and calling
+     * this method instructs RelatedSearchBehavior to use the search value found in the owner instance.
+     *
+     * @param string $field
+     */
+    public function disableAutoSearch($field) {
+        $this->_disableAutoSearch[$field]=true;
+    }
+    /**
      * Add a condition for a relation.
      *
+     * Same parameters as a compare condition for CDbCriteria except when $search_value['#between#'] is set
+     * in which case this becomes a between condition.
+     *
      * TODO: Refactor this with 'relatedSearch' method.
-     * @param unknown $field
-     * @param unknown $search_value
-     * @param unknown $partialMatch
-     * @param unknown $operator
-     * @param unknown $escape
+     * @param string $field
+     * @param string $search_value
+     * @param string $partialMatch
+     * @param string $operator
+     * @param bool $escape
      */
-    public function addRelationCondition($field,$search_value,$partialMatch,$operator,$escape) {
-        $relationfield=$this->relations[$field];
+    static $count=0;
+    public function addRelationCompare($field,$search_value, $partialMatch=false, $operator='AND', $escape=true) {
+        $relationvar=$this->relations[$field];
+        // Check configuration of the relation.
+        // Either an array with 'field', 'searchvalue', 'partialMatch', or
+        // the path to the relation.
+        if(is_array($relationvar)) {
+            // Array option for the relation
+            $relationfield=$relationvar['field'];
+            /*
+            if(isset($relationvar['searchvalue'])) {
+                $ovar=$relationvar['searchvalue'];
+            }
+            */
+            if(isset($relationvar['partialMatch'])) {
+                $partialMatch=$relationvar['partialMatch'];
+            }
+        } else {
+            // Field for the relation.
+            $relationfield=$relationvar;
+        }
         /////////////////////////////////////////////////////////////////
         // Get relation part, table alias, and column reference in query.
         /////////////////////////////////////////////////////////////////
@@ -447,11 +541,17 @@ class RelatedSearchBehavior extends CActiveRecordBehavior {
             $column=$relationfield;
             // The column name itself is everything after the last dot in the relationfield.
             $pos=strrpos($relationfield, '.');
-            $column=substr($relationfield, $pos+1);
+            if($pos!==false) {
+                $column=substr($relationfield, $pos+1);
+            }
 
             // The full relation path is everything before the last dot.
             $pos=strrpos($relation, '.');
-            $relation=substr($relation, 0, $pos);
+            if($pos!==false) {
+                $relation=substr($relation, 0, $pos);
+            } else {
+                $relation='';
+            }
 
             // The join table alias is the last part of the relation.
             $shortrelation=$relation;
@@ -487,27 +587,37 @@ class RelatedSearchBehavior extends CActiveRecordBehavior {
         $dbSchema=$this->getOwner()->getDbConnection()->getSchema();
 
         // The column reference in the query is the table alias + the column name.
-        $column="$shortrelation.$column";
+        if($shortrelation!=='') {
+            $column="$shortrelation.$column";
+        }
         $column=$dbSchema->quoteColumnName($column);
 
         /* Actual search functionality */
 
         // If a search is done on this relation, add compare condition and require relation in query.
         // Excluding object to avoid special cases.
-        $isrequire_relation=false;
         if(!is_object($search_value)) {
+        	/* @var $criteria CDbCriteria */
             $criteria=$this->getOwner()->getDbCriteria();
             // Add with conditions to setup join relations
             $w=null;
-            foreach(array_reverse(split('\.',$relation)) as $r) {
+            foreach(array_reverse(preg_split('/\./',$relation)) as $r) {
+                if($r==='') continue; // Local table, no column.
                 if($w!==null) {
                     $w=array($r=>array('with'=>$w,'select'=>array()));
                 } else {
                     $w=array($r=>array('select'=>array()));
                 }
             }
-            $criteria->mergeWith(array('with'=>$w));
-            $criteria->compare($column,$search_value,$partialMatch,$operator,$escape);
+            if($w!==null) {
+                $criteria->mergeWith(array('with'=>$w));
+            }
+
+            if(is_array($search_value)&&isset($search_value['#between#'])) {
+                $criteria->addBetweenCondition($column,$search_value[0],$search_value[1],$operator);
+            } else {
+                $criteria->compare($column,$search_value,$partialMatch,$operator,$escape);
+            }
         } else {
             $obj=CVarDumper::dumpAsString($search_value);
             throw new CException("Provided search value for '$field' ($column) is an object ($obj), should be string or array.");
@@ -568,7 +678,7 @@ class RelatedSearchBehavior extends CActiveRecordBehavior {
         if(array_key_exists(strtolower($name),$this->_data)) {
             return true;
         } else {
-            foreach($this->relations as $key=>$relationvar) {
+            foreach(array_keys($this->relations) as $key/*=>$relationvar*/) {
                 if($key===$name||(strtolower($key)===strtolower($name))) {
                     return true;
                 }
@@ -628,9 +738,12 @@ class RelatedSearchBehavior extends CActiveRecordBehavior {
             if(($inOwner=$owner->hasAttribute($name))||isset($this->relations[$name])) {
                 $column=$name;
                 $value=$parameters[0];
-                $partialMatch=false;
+                if($value==='=') {
+            		$value=array(null,'');
+            	}
+            	$partialMatch=false;
                 $operator="AND";
-                $escape=false;
+                $escape=true;
                 switch(count($parameters)) {
                     case 4:
                         $escape=$parameters[3];
@@ -644,32 +757,52 @@ class RelatedSearchBehavior extends CActiveRecordBehavior {
                 }
                 if($inOwner) {
                     $db_col = $owner->getDbConnection()->getSchema()->quoteColumnName($owner->getTableAlias().'.'.$column);
-                    if($value!==null||$partialMatch) {
-                        $owner->getDbCriteria()->compare($db_col, $value,$partialMatch,$operator,$escape);
+                    if($value!==null||$partialMatch) {//if($column==='device_type_protocol'&&(self::$count++>-1))throw new CException($db_col.self::$count);
+                    	if(!$partialMatch||!is_array($value)) {
+                        	$owner->getDbCriteria()->compare($db_col, $value,$partialMatch,$operator,$escape);
+                    	} else {
+                    		/** Partial match requested on array - implement regular expression */
+                    		if($escape) {
+                    			$value=array_map("preg_quote",$value);
+                    		}
+                    		$condition=$db_col." REGEXP '(".implode('|',$value).")'";
+                        	$owner->getDbCriteria()->addCondition($condition,$operator);
+                    	}
 
                     } else {
                         // Creates is null condition for exact match
                         $owner->getDbCriteria()->addInCondition($column, $value, $operator);
                     }
                 } else {
-                    $this->addRelationCondition($name,$value,$partialMatch,$operator,$escape);
+                    $this->addRelationCompare($name,$value,$partialMatch,$operator,$escape);
                 }
                 return $owner;
             }
         }
         if(!count($parameters)) {
-            if(strpos($name,'get')===0) {
-                return $this->{substr($name,3)};
+            if(strpos($name, 'get') === 0) {
+                return $owner->{substr($name, 3)};
             } else {
-                throw new CException("Parameters required for autoscope '$name'");
+                $isAutoScope=($inOwner=$owner->hasAttribute($name)) ||
+                         isset($this->relations[$name]);
+                if($isAutoScope) $message='Parameters required for autoscope "{class}.{property}';
+                else
+                    $message='Property or method "{class}.{property}" is not defined.';
             }
         } else {
             if($owner instanceof CActiveRecord) {
-                throw new CException("No corresponding attribute '$name' found in '".get_class($owner)."' for autoscope '$name'");
-	    } else {
-                throw new CException("Invalid owner of type ".get_class($owner)." for autoscope '$name'");
+                $message='Property or method "{class}.{property}" is not defined.';
+            } else {
+                $message='"{class}" must inherit from CActiveRecord for {extension}';
             }
         }
+        $errorParams=array(
+                '{class}' => get_class($owner),
+                '{property}' => $name,
+                '{extension}' => get_class($this)
+        );
+        throw new CException(
+                Yii::t('RelatedSearchBehavior.t', $message, $errorParams));
     }
     // Suggestions:
     //  Add 'quoteRelationField' method to quote a relation according to the defined fields.
@@ -690,5 +823,13 @@ class RelatedSearchBehavior extends CActiveRecordBehavior {
      * 1.14  Look recursively for relations.
      * 1.15  Added 'getDataProvider'.
      * 1.16  Added relations used in sort "attributes" provided as a parameter.
+     * 1.17  Improved error messages. Fix for relations that are defined through option array.
+     *       Fix for local fields (aliases/virtual attributes with modified search field)
+     * 1.18  Renamed 'addRelationCondition' in 'addRelatedCompare'.
+     * 1.19  Reactivated 'together'.
+     * 1.20  Converting partial match on list in regular expression comparison.
+     * 1.21  Added 'addBetweenCondition'
+     * 1.22  Allow DB expression in sort rule, exclude tablealias from req. relations, allow multiple fields in sort rule.
+     *       Disable autosearch option
      */
 }
