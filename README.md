@@ -292,9 +292,13 @@ All Models extends from YActiveRecord which extends from CActiveRecord and imple
                 }
             /**
              * Sample code to handle exceptions (fields that are not in
-             * relations). else if(!isset($relations[$attribute])) { // Not a
-             * related search item -> do something else
-             * $this->compareProperty($attribute, $value,true); }
+             * relations).
+             * ```php
+             * else if(!isset($relations[$attribute])) {
+             *   // Not a related search item -> do something else
+             *   $this->compareProperty($attribute, $value,true);
+             * }
+             * ```
              */
             }
         }
