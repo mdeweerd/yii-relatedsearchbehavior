@@ -9,8 +9,9 @@
  *
  * @license http://www.opensource.org/licenses/mit-license.php MIT
  *  The MIT License
- * @author Mario De Weerd
+ * @author https://github.com/mdeweerd/yii-relatedsearchbehavior
  * @author Svobik7 (yiiframework.com/forum) -
+ * @author https://github.com/LeoZandvliet
  *
  * @example
  *
