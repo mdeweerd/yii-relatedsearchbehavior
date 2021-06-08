@@ -942,5 +942,6 @@ class RelatedSearchBehavior extends CActiveRecordBehavior {
      * 1.23  Resolve nested "complex" relations (relations expressed as array in related model)
      * 1.24  When matching empty array, match it exactly (does not match anything)
      * 1.25  PHPDoc improvements, use of strval where possible (PHAN checks).
+     * 1/26  Allow related search to be directly used in the $criteria->condition (LeoZandvliet)
      */
 }
