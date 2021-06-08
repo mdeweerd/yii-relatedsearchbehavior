@@ -259,6 +259,63 @@ $model->rememberScenario="admin";
 $dataProvider=$model->search(); 
 ```
 
+This is the search method in projects where the author uses this extension.
+All Models extends from YActiveRecord which extends from CActiveRecord and implements several additions to default CActiveRecord features.  It implements the following search method (the RelatedSearchBehavior has to be added to the modell class itself):
+```php
+    /**
+     * Search method valid for all Active Records (with RelatedSearchBehavior)
+     *
+     * @return KeenActiveDataProvider
+     */
+    public function search() {
+        $criteria=new CDbCriteria();
+        $t=$this->getTableAlias(false, false);
+        $ds=$this->getDbConnection()->getSchema();
+
+        $columns=$this->getMetaData()->columns;
+        //$relations=$this->relations;
+        foreach($this->getSafeAttributeNames() as $attribute) {
+            $value=$this->{$attribute};
+            if($value==='=') {
+            	$value=array(null,'');
+            }
+            if(is_array($value)&&!empty($value)||(!is_array($value)&&"$value" !== "")) {
+                if(isset($columns[$attribute])) {
+                    if(in_array($attribute,$this->exactSearchAttributes())) {
+                        Yii::trace("Exact match required for $attribute");
+                    }
+                    $criteria->compare($ds->quoteColumnName("$t.$attribute"),
+                            $value,
+                            !$columns[$attribute]->isForeignKey
+                            &&!in_array($attribute,$this->exactSearchAttributes())
+                    );
+                }
+            /**
+             * Sample code to handle exceptions (fields that are not in
+             * relations). else if(!isset($relations[$attribute])) { // Not a
+             * related search item -> do something else
+             * $this->compareProperty($attribute, $value,true); }
+             */
+            }
+        }
+        // $criteria->together=true;
+
+        return $this->relatedSearch($criteria
+                //,array('sort'=>array('defaultOrder'=>$this->getTableAlias(true,false).'.entity_id DESC'))
+        );
+    }
+
+    /**
+     * Provides the list of attributes for which an exact search is
+     * needed and not a partial search.
+     * (typical: keys, enums, etc.
+     * @return string[]
+     */
+    public function exactSearchAttributes() {
+        return [];
+    }
+```
+
 #### History [¶](#history)
 
 See `RelatedSearchbehavior.php` for a short description of the versions
