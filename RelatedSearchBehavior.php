@@ -373,6 +373,15 @@ class RelatedSearchBehavior extends CActiveRecordBehavior {
             ) {
                 $require_relation=true;
             }
+		
+            // d. If a relation is used in the criteria condition, require it and adjust the condition
+            // Pattern to search for, search if relation is used as whole word only (dont want partials to be replaced)
+            $pattern = '/\b('.preg_quote($var).')\b/';
+            if(preg_match($pattern, $criteria->condition)){
+                $totalReplaced = 0;
+                $require_relation=($shortrelation!=='');
+                $criteria->condition = preg_replace($pattern, $column,$criteria->condition, -1, $totalReplaced);
+            }
 
             // If the relation is required, add it to the search condition.
             if($require_relation&&is_string($relation)) {
