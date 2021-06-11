@@ -374,14 +374,14 @@ class RelatedSearchBehavior extends CActiveRecordBehavior {
             ) {
                 $require_relation=true;
             }
-		
+
             // d. If a relation is used in the criteria condition, require it and adjust the condition
             // Pattern to search for, search if relation is used as whole word only (dont want partials to be replaced)
-            $pattern = '/\b('.preg_quote($var).')\b/';
-            if(preg_match($pattern, $criteria->condition)){
-                $totalReplaced = 0;
-                $require_relation=($shortrelation!=='');
-                $criteria->condition = preg_replace($pattern, $column,$criteria->condition, -1, $totalReplaced);
+            $pattern = '/(?<![.`\'"])\b('.preg_quote($var).')\b/';
+            $totalReplaced = 0;
+            $criteria->condition=preg_replace($pattern, $column,$criteria->condition, -1, $totalReplaced);
+            if(($totalReplaced!==0)&&$shortrelation!=='') {
+                $require_relation=true;
             }
 
             // If the relation is required, add it to the search condition.
@@ -943,5 +943,6 @@ class RelatedSearchBehavior extends CActiveRecordBehavior {
      * 1.24  When matching empty array, match it exactly (does not match anything)
      * 1.25  PHPDoc improvements, use of strval where possible (PHAN checks).
      * 1.26  Allow related search to be directly used in the $criteria->condition (LeoZandvliet)
+     * 1.27  Improved regex added in 1.26.
      */
 }
