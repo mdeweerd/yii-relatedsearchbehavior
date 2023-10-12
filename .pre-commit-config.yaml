@@ -1,0 +1,60 @@
+---
+files: (?x)^(.*\.(php|py|pl|pm|json|md|sh|yaml|cfg|txt)|[^/]*
+  )$
+repos:
+  - repo: https://github.com/executablebooks/mdformat
+    rev: 0.7.16
+    hooks:
+      - id: mdformat
+        name: Format Markdown
+        entry: mdformat  # Executable to run, with fixed options
+        language: python
+        types: [markdown]
+        args: [--wrap, '75', --number]
+        additional_dependencies:
+          # - mdformat-toc
+          - mdformat-gfm
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: no-commit-to-branch
+        args: [--branch, dummy]
+      - id: check-yaml
+        args: [--unsafe]
+      - id: debug-statements
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-json
+      - id: mixed-line-ending
+      - id: check-builtin-literals
+      - id: check-ast
+      - id: check-merge-conflict
+      - id: check-executables-have-shebangs
+      - id: check-shebang-scripts-are-executable
+      - id: check-docstring-first
+      - id: fix-byte-order-marker
+      - id: check-case-conflict
+      # - id: check-toml
+  - repo: https://github.com/Lucas-C/pre-commit-hooks
+    rev: v1.5.1
+    hooks:
+      - id: remove-tabs
+  - repo: https://github.com/bolovsky/pre-commit-php
+    rev: 1.5.1
+    hooks:
+      - id: php-cbf
+        files: \.(php)$
+        args: [--standard=PEAR -p]
+      - id: php-cs
+        args: [-p -s "--exclude=Squiz.Classes.ValidClassName"]
+      - id: php-lint
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.2.5
+    hooks:
+      - id: codespell
+        exclude: ^.*\.json$
+        args:
+          - --builtin=clear,rare,informal,usage,code,names
+          - --ignore-words-list=xxx
+          - --skip="./.*"
+          - --quiet-level=2

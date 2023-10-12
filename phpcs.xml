@@ -1,0 +1,61 @@
+<?xml version="1.0"?>
+<ruleset xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" name="PHP_CodeSniffer" xsi:noNamespaceSchemaLocation="phpcs.xsd">
+    <rule ref="PSR1"/>
+    <rule ref="PSR1.Classes.ClassDeclaration.MissingNamespace">
+        <severity>0</severity>
+    </rule>
+    <rule ref="PSR1.Methods.CamelCapsMethodName.NotCamelCaps">
+        <severity>0</severity>
+    </rule>
+    <rule ref="PSR1.Classes.ClassDeclaration.MultipleClasses">
+        <severity>0</severity>
+    </rule>
+    <rule ref="PSR1.Files.SideEffects.FoundWithSymbols">
+        <severity>0</severity>
+    </rule>
+    <rule ref="PSR1.Classes.ClassDeclaration.MissingNamespace">
+        <severity>0</severity>
+    </rule>
+    <rule ref="PSR1.Classes.ClassDeclaration.MissingNamespace">
+        <severity>0</severity>
+    </rule>
+    <!--
+    <rule ref="PEAR"/>
+    -->
+    <rule ref="PEAR.Commenting.FileComment.MissingVersion">
+        <severity>0</severity>
+    </rule>
+    <rule ref="PEAR.Commenting.FileComment.MissingCategoryTag">
+        <severity>0</severity>
+    </rule>
+    <rule ref="PEAR.Commenting.FileComment.MissingPackageTag">
+        <severity>0</severity>
+    </rule>
+    <rule ref="PEAR.Commenting.FileComment.MissingAuthorTag">
+        <severity>0</severity>
+    </rule>
+    <rule ref="PEAR.Commenting.FileComment.MissingLicenseTag">
+        <severity>0</severity>
+    </rule>
+    <rule ref="PEAR.Commenting.FileComment.MissingLinkTag">
+        <severity>0</severity>
+    </rule>
+    <rule ref="PEAR.Commenting.ClassComment.MissingCategoryTag">
+        <severity>0</severity>
+    </rule>
+    <rule ref="PEAR.Commenting.ClassComment.MissingPackageTag">
+        <severity>0</severity>
+    </rule>
+    <rule ref="PEAR.Commenting.ClassComment.MissingAuthorTag">
+        <severity>0</severity>
+    </rule>
+    <rule ref="PEAR.Commenting.ClassComment.MissingLicenseTag">
+        <severity>0</severity>
+    </rule>
+    <rule ref="PEAR.Commenting.ClassComment.MissingLinkTag">
+        <severity>0</severity>
+    </rule>
+    <rule ref="Generic.Files.LineLength.TooLong">
+        <severity>0</severity>
+    </rule>
+</ruleset>
